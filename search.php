@@ -13,7 +13,7 @@
                     <li class="comment-count"><?php comments_popup_link('0 条评论', ' 1 条评论', '% 条评论'); ?></li>
                 </ul>
                 <div class="post-content">
-                    <?php the_content('阅读剩余部分 -'); ?>
+                    <?php the_excerpt('阅读剩余部分 -'); ?>
                 </div>
             </article>
 		<?php endwhile; ?>

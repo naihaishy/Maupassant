@@ -6,12 +6,15 @@
 				<h1 class="post-title"><?php the_title() ?></h1>
 				<ul class="post-meta">
 					<li><?php the_time('F j, Y'); ?></li>
+					<li><?php wp_zan();?></li>
+					<li><?php post_views(' ', ' 次'); ?>浏览</li>
 					<li class="comment-count"><?php comments_popup_link('0 条评论', ' 1 条评论', '% 条评论'); ?></li>
 				</ul>
 				<div class="post-content">
-					<?php the_content(); ?>
+					<?php the_content(''); ?>
 				</div>
 			</article>
+			<?php the_tags();?><br /><br />
 		<?php endwhile; endif;?>
 		<?php comments_template(); ?>
 	</div>

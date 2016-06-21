@@ -6,8 +6,8 @@ Author URI: http://www.zhfsky.com
 */
 
 ::selection {
-	background:#F6F6F3;
-	color:#555;
+    background: #222;
+    color: white;
 }
 body {
 	background-color:#FFF;
@@ -643,3 +643,5 @@ img.alignright {
 	padding-left: 20px;
 	}
 }
+
+

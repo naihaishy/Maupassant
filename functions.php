@@ -7,7 +7,7 @@
  * @version 0.0.1
  * @link http:/www.zhfsky.com
  */
-
+include_once('naihai_functions.php');
 	// 定义主题路径
 	define( "THEMEPATH", get_bloginfo('template_directory') );
 
@@ -152,11 +152,162 @@
 	<?php
 	}
 
+	//更换avatar地址
 	function get_ssl_avatar($avatar) {
 	    $avatar = str_replace(array("www.gravatar.com","0.gravatar.com","1.gravatar.com","2.gravatar.com"),"secure.gravatar.com",$avatar);
 	    return $avatar;
 	}
 	add_filter('get_avatar', 'get_ssl_avatar');
 
+	//通过前台不加载语言包来提高博客效率
+	add_filter( 'locale', 'wpjam_locale' );
+	function wpjam_locale($locale) {
+	    $locale = ( is_admin() ) ? $locale : 'en_US';
+	    return $locale;
+	}
+
+	//仪表盘自定义板块  2016.4.16 by naihai
+	function custom_dashboard_help() {
+	echo '<p><a href="  ">Ting</a></p>';
+	echo '<p><a href="  ">使用说明</a></p>';
+	}
+	function example_add_dashboard_widgets() {
+	    wp_add_dashboard_widget('custom_help_widget', 'Naihai', 'custom_dashboard_help');
+	}
+	add_action('wp_dashboard_setup', 'example_add_dashboard_widgets' );
+
+
+	// WordPress 后台禁用Google Open Sans字体 自加
+	add_filter( 'gettext_with_context', 'wpdx_disable_open_sans', 888, 4 );
+	function wpdx_disable_open_sans( $translations, $text, $context, $domain ) {
+	if ( 'Open Sans font: on or off' == $context && 'on' == $text ) {
+	    $translations = 'off';
+	  }
+	  return $translations;
+	}
+
+
+	//禁用更新代码 自加
+
+
+add_filter('wp_headers','wpjam_headers',10,2);
+function wpjam_headers($headers,$wp){
+    if(!is_user_logged_in() && empty($wp->query_vars['feed'])){
+        $headers['Cache-Control']   = 'max-age:600';
+        $headers['Expires']         = gmdate('D, d M Y H:i:s', time()+600) . " GMT";
+
+        $wpjam_timestamp = get_lastpostmodified('GMT')>get_lastcommentmodified('GMT')?get_lastpostmodified('GMT'):get_lastcommentmodified('GMT');
+        $wp_last_modified = mysql2date('D, d M Y H:i:s', $wpjam_timestamp, 0).' GMT';
+        $wp_etag = '"' . md5($wp_last_modified) . '"';
+        $headers['Last-Modified'] = $wp_last_modified;
+        $headers['ETag'] = $wp_etag;
+
+        // Support for Conditional GET
+        if (isset($_SERVER['HTTP_IF_NONE_MATCH']))
+            $client_etag = stripslashes(stripslashes($_SERVER['HTTP_IF_NONE_MATCH']));
+        else $client_etag = false;
+
+        $client_last_modified = empty($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? '' : trim($_SERVER['HTTP_IF_MODIFIED_SINCE']);
+        // If string is empty, return 0. If not, attempt to parse into a timestamp
+        $client_modified_timestamp = $client_last_modified ? strtotime($client_last_modified) : 0;
+
+        // Make a timestamp for our most recent modification...
+        $wp_modified_timestamp = strtotime($wp_last_modified);
+
+        $exit_required = false;
+
+        if ( ($client_last_modified && $client_etag) ?
+                 (($client_modified_timestamp >= $wp_modified_timestamp) && ($client_etag == $wp_etag)) :
+                 (($client_modified_timestamp >= $wp_modified_timestamp) || ($client_etag == $wp_etag)) ) {
+            $status = 304;
+            $exit_required = true;
+        }
+
+        if ( $exit_required ){
+            if ( ! empty( $status ) ){
+                status_header( $status );
+            }
+            foreach( (array) $headers as $name => $field_value ){
+                @header("{$name}: {$field_value}");
+            }
+
+            if ( isset( $headers['Last-Modified'] ) && empty( $headers['Last-Modified'] ) && function_exists( 'header_remove' ) ){
+                @header_remove( 'Last-Modified' );
+            }
+            
+            exit();    
+        } 
+    } 
+    return $headers;
+}
+
+//摘要长度更改
+function new_excerpt_length($length) {
+    return 60;
+}
+add_filter('excerpt_length', 'new_excerpt_length');
+ 
+//自定义结尾
+function new_excerpt_more($more) {
+    global $post;
+    return '<p><a href="'.get_permalink($post->ID). '">阅读全文</a></p>';
+}
+add_filter('excerpt_more', 'new_excerpt_more');
+
+
+
+
+
+//自定义logo
+
+function my_custom_logo() {
+   echo '
+      <style type="text/css">
+          h1 a { background-image:url('.get_bloginfo('template_directory').'/img/logo.png) !important; }
+      </style>
+   ';
+}
+add_action('login_head', 'my_custom_logo');
+
+//自定义登录页面的LOGO链接为首页链接
+add_filter('login_headerurl', create_function(false,"return get_bloginfo('url');"));
+//自定义登录页面的LOGO提示为网站名称
+add_filter('login_headertitle', create_function(false,"return get_bloginfo('name');"));
+
+
+
+/* 访问计数 */
+function record_visitors()
+{
+	if (is_singular())
+	{
+	  global $post;
+	  $post_ID = $post->ID;
+	  if($post_ID)
+	  {
+		  $post_views = (int)get_post_meta($post_ID, 'views', true);
+		  if(!update_post_meta($post_ID, 'views', ($post_views+1)))
+		  {
+			add_post_meta($post_ID, 'views', 1, true);
+		  }
+	  }
+	}
+}
+add_action('wp_head', 'record_visitors');
+ 
+/// 函数名称：post_views
+/// 函数作用：取得文章的阅读次数
+function post_views($before = '(点击 ', $after = ' 次)', $echo = 1)
+{
+  global $post;
+  $post_ID = $post->ID;
+  $views = (int)get_post_meta($post_ID, 'views', true);
+  if ($echo) echo $before, number_format($views), $after;
+  else return $views;
+}
+
+
 
 ?>
+
+
